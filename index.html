@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Chat with Vertex AI</title>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f9f9f9;
+      padding: 40px;
+    }
+
+    h1 {
+      text-align: center;
+      color: #333;
+    }
+
+    #chatbox {
+      max-width: 700px;
+      margin: auto;
+      background: #fff;
+      padding: 30px;
+      border-radius: 8px;
+      box-shadow: 0 0 12px rgba(0, 0, 0, 0.1);
+    }
+
+    textarea {
+      width: 100%;
+      height: 100px;
+      padding: 10px;
+      resize: none;
+      font-size: 16px;
+    }
+
+    button {
+      margin-top: 10px;
+      padding: 10px 20px;
+      font-size: 16px;
+      cursor: pointer;
+      background: #007bff;
+      color: white;
+      border: none;
+      border-radius: 5px;
+    }
+
+    button:hover {
+      background: #0056b3;
+    }
+
+    .chat-response {
+      margin-top: 20px;
+      background: #f1f1f1;
+      padding: 20px;
+      border-radius: 6px;
+      line-height: 1.6;
+    }
+
+    code {
+      background-color: #eee;
+      padding: 2px 4px;
+      border-radius: 4px;
+      font-family: monospace;
+    }
+
+    pre {
+      background-color: #eee;
+      padding: 10px;
+      border-radius: 5px;
+      overflow-x: auto;
+    }
+  </style>
+</head>
+<body>
+  <div id="chatbox">
+    <h1>Ask Vertex AI Chatbot</h1>
+    <textarea id="userPrompt" placeholder="Type your question here..."></textarea>
+    <button onclick="askChatbot()">Send</button>
+    <div id="response" class="chat-response"></div>
+  </div>
+
+  <script>
+    async function askChatbot() {
+      const prompt = document.getElementById("userPrompt").value;
+      const responseDiv = document.getElementById("response");
+      responseDiv.innerHTML = "⏳ Generating response...";
+
+      try {
+        const response = await fetch("https://us-central1-gcp-learning-01-463711.cloudfunctions.net/palmChatbot", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ prompt: prompt })
+        });
+
+        const data = await response.json();
+
+        if (data.response) {
+          const html = marked.parse(data.response);
+          responseDiv.innerHTML = html;
+        } else {
+          responseDiv.textContent = data.error || "❌ No response received.";
+        }
+      } catch (error) {
+        responseDiv.textContent = "❌ Network error: " + error.message;
+      }
+    }
+  </script>
+</body>
+</html>
