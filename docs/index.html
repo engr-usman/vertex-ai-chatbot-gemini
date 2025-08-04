@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Gemini Chatbot</title>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" />
+</head>
+<body class="relative bg-gray-100 text-gray-900 font-sans flex flex-col items-center p-4 min-h-screen">
+
+  <!-- ✅ GitHub Ribbon -->
+  <a href="https://github.com/engr-usman/vertex-ai-chatbot-gemini.git" class="absolute top-0 right-0 z-50">
+    <img
+      loading="lazy"
+      width="149"
+      height="149"
+      src="https://github.blog/wp-content/uploads/2008/12/forkme_right_darkblue_121621.png?resize=149%2C149"
+      alt="Fork me on GitHub"
+    />
+  </a>
+
+  <h1 class="text-3xl font-bold mb-4 mt-20 text-center">💬 Gemini Chatbot (Vertex AI)</h1>
+
+  <div class="w-full max-w-2xl space-y-4">
+    <div id="chat-box" class="bg-white shadow-md rounded-lg p-4 h-[500px] overflow-y-auto border border-gray-200"></div>
+
+    <div class="flex space-x-2">
+      <input
+        id="user-input"
+        type="text"
+        placeholder="Type your question here..."
+        class="flex-1 px-4 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+      />
+      <button
+        id="send-button"
+        class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition"
+      >
+        Send
+      </button>
+      <button
+        id="clear-button"
+        class="bg-gray-400 text-white px-3 py-2 rounded hover:bg-gray-600 transition"
+      >
+        Clear Chat
+      </button>
+    </div>
+  </div>
+
+  <script>
+    const chatBox = document.getElementById("chat-box");
+    const userInput = document.getElementById("user-input");
+    const sendButton = document.getElementById("send-button");
+    const clearButton = document.getElementById("clear-button");
+
+    let chatHistory = [];
+
+    function appendMessage(sender, text, isLoading = false) {
+      const messageEl = document.createElement("div");
+      messageEl.className = sender === "You"
+        ? "text-right mb-3"
+        : "text-left mb-3";
+
+      const label = `<div class="font-bold text-sm">${sender}:</div>`;
+      const content = isLoading
+        ? `<div class="text-sm text-gray-500 italic animate-pulse">Typing...</div>`
+        : `<div class="prose prose-sm">${marked.parse(text)}</div>`;
+
+      messageEl.innerHTML = label + content;
+      chatBox.appendChild(messageEl);
+      chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    function sendPrompt() {
+      const prompt = userInput.value.trim();
+      if (!prompt) return;
+
+      appendMessage("You", prompt);
+      appendMessage("Gemini", "", true); // typing...
+
+      userInput.value = "";
+      userInput.disabled = true;
+      sendButton.disabled = true;
+
+      fetch("https://us-central1-gcp-learning-01-463711.cloudfunctions.net/palmChatbot", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt }),
+      })
+        .then((res) => res.json())
+        .then((data) => {
+          chatBox.lastChild.remove(); // remove "Typing..."
+          appendMessage("Gemini", data.response || "No response.");
+        })
+        .catch((err) => {
+          chatBox.lastChild.remove();
+          appendMessage("Gemini", "❌ Error: " + err.message);
+        })
+        .finally(() => {
+          userInput.disabled = false;
+          sendButton.disabled = false;
+        });
+    }
+
+    sendButton.addEventListener("click", sendPrompt);
+    userInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") sendPrompt();
+    });
+
+    clearButton.addEventListener("click", () => {
+      chatBox.innerHTML = "";
+    });
+  </script>
+</body>
+</html>

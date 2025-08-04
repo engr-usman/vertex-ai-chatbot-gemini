@@ -1,5 +1,8 @@
 # Vertex AI Chatbot with Gemini
 
+![Cloud Function Deploy](https://github.com/engr-usman/vertex-ai-chatbot-gemini/actions/workflows/deploy-cloud-function.yml/badge.svg)
+![Lint & Docs](https://github.com/engr-usman/vertex-ai-chatbot-gemini/actions/workflows/lint-and-docs.yml/badge.svg)
+
 A serverless chatbot powered by **Gemini 1.5** on **Google Cloud Vertex AI**, deployed using **Cloud Functions**, and presented through a Markdown-friendly frontend using `marked.js`.
 
 ---
@@ -68,9 +71,9 @@ def chatbot(request: Request):
         if not prompt:
             return jsonify({"error": "Prompt is missing"}), 400
 
-        vertexai.init(project="gcp-learning-01-463711", location="us-central1")
+        vertexai.init(project="<project_id>", location="<region>")
 
-        model = GenerativeModel("gemini-1.5-flash-002")
+        model = GenerativeModel("<model_id>")
         response = model.generate_content(prompt)
 
         return jsonify({"response": response.text})
@@ -93,6 +96,16 @@ gcloud functions deploy palmChatbot \
   --region us-central1 \
   --allow-unauthenticated \
   --service-account vertex-chatbot-sa@<YOUR_PROJECT_ID>.iam.gserviceaccount.com
+```
+
+```
+gcloud functions deploy palmChatbot \
+  --runtime=python310 \
+  --trigger-http \
+  --allow-unauthenticated \
+  --entry-point=chatbot \
+  --memory=512MB
+  --region us-central1
 ```
 
 🌐 Step 5: Frontend
@@ -165,17 +178,6 @@ Use this index.html for local testing:
 ```
 ✅ Open index.html locally or host it via GitHub Pages, Firebase Hosting, or any static server.
 
-
-### Deploy:
-```
-gcloud functions deploy palmChatbot \
-  --runtime python311 \
-  --trigger-http \
-  --allow-unauthenticated \
-  --entry-point chatbot \
-  --region us-central1
-```
-
 ### Run Curl or Frontend index.html file to verify
 ```
 curl -X POST https://<region>-<project_id>.cloudfunctions.net/<function_name> \
@@ -196,4 +198,4 @@ curl -X POST https://<region>-<project_id>.cloudfunctions.net/<function_name> \
     marked.js open-source project
 
 ## Reference Link
-- Goodle Models including versions: https://cloud.google.com/vertex-ai/generative-ai/docs/learn/model-versions
+- Goodle Model versions and lifecycle: https://cloud.google.com/vertex-ai/generative-ai/docs/learn/model-versions
