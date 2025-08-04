@@ -1,0 +1,57 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pyc
+*.pdm.toml
+*.pdm.lock
+*.egg-info/
+.Python
+env/
+venv/
+.venv/
+ENV/
+*.env
+*.log
+
+# macOS
+.DS_Store
+
+# Visual Studio Code
+.vscode/
+
+# Node modules (if ever used for frontend)
+node_modules/
+
+# GCP service account keys (NEVER COMMIT THESE!)
+sa-key.json
+*.b64
+
+# GitHub Actions
+.github/workflows/*.log
+.github/workflows/*.tmp
+
+# Build & temp files
+build/
+dist/
+*.zip
+*.tar.gz
+tmp/
+*.tmp
+
+# HTML & Frontend
+docs/.DS_Store
+docs/node_modules/
+
+# Coverage / testing
+.coverage
+htmlcov/
+.cache/
+pytest_cache/
+
+# Others
+.idea/
+*.iml
+*.swp
+*.swo

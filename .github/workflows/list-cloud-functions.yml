@@ -1,0 +1,25 @@
+name: List Cloud Functions
+
+on:
+  workflow_dispatch:
+
+jobs:
+  list-functions:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Decode service account key
+        run: echo "${{ secrets.GCP_SA_KEY }}" | base64 -d > $HOME/gcp-key.json
+
+      - name: Authenticate with Google Cloud
+        uses: google-github-actions/auth@v1
+        with:
+          credentials_json: '${{ secrets.GCP_SA_KEY }}'
+
+      - name: Set project and list cloud functions
+        run: |
+          gcloud config set project gcp-learning-01-463711
+          gcloud functions list

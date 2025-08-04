@@ -1,7 +1,7 @@
-# Vertex AI Chatbot with Gemini
+# Vertex AI Gemini Chatbot on Google Cloud
 
-![Cloud Function Deploy](https://github.com/engr-usman/vertex-ai-chatbot-gemini/actions/workflows/deploy-cloud-function.yml/badge.svg)
-![Lint & Docs](https://github.com/engr-usman/vertex-ai-chatbot-gemini/actions/workflows/lint-and-docs.yml/badge.svg)
+![Cloud Function Deploy](https://github.com/engr-usman/vertex-ai-chatbot-gemini/actions/workflows/list-cloud-functions/badge.svg)
+![Lint & Docs](https://github.com/engr-usman/vertex-ai-chatbot-gemini/actions/workflows/test-and-deploy/badge.svg)
 
 A serverless chatbot powered by **Gemini 1.5** on **Google Cloud Vertex AI**, deployed using **Cloud Functions**, and presented through a Markdown-friendly frontend using `marked.js`.
 
@@ -27,175 +27,239 @@ Make sure you have:
 
 ---
 
-## 🔑 Step 1: Enable Required Services
+## 📆 Part 1: Backend Setup (Cloud Function)
 
-Run the following commands to enable necessary Google Cloud APIs:
+### ✅ Prerequisites
+
+* A Google Cloud Project (e.g., `gcp-learning-01-463711`)
+* Billing enabled
+* Vertex AI & Cloud Functions APIs enabled
+
+### 🔌 Enable Required APIs
 
 ```bash
 gcloud services enable \
   aiplatform.googleapis.com \
   cloudfunctions.googleapis.com \
-  artifactregistry.googleapis.com \
-  iamcredentials.googleapis.com \
-  storage.googleapis.com
+  cloudbuild.googleapis.com \
+  iam.googleapis.com
 ```
 
-👤 Step 2: Create Service Account for Cloud Function
-```bash
-# Create a service account
-gcloud iam service-accounts create vertex-chatbot-sa \
-  --display-name "Vertex Chatbot Service Account"
+### 👤 Create Service Account for GitHub Actions
 
-# Grant necessary roles
-gcloud projects add-iam-policy-binding <YOUR_PROJECT_ID> \
-  --member="serviceAccount:vertex-chatbot-sa@<YOUR_PROJECT_ID>.iam.gserviceaccount.com" \
+```bash
+export PROJECT_ID=gcp-learning-01-463711
+export SA_NAME=vertex-sa
+
+gcloud iam service-accounts create $SA_NAME \
+  --description="Service Account for Vertex AI Chatbot" \
+  --display-name="Vertex AI Chatbot SA"
+```
+
+#### 🔐 Grant Roles
+
+```bash
+gcloud projects add-iam-policy-binding $PROJECT_ID \
+  --member="serviceAccount:$SA_NAME@$PROJECT_ID.iam.gserviceaccount.com" \
   --role="roles/aiplatform.user"
 
-gcloud projects add-iam-policy-binding <YOUR_PROJECT_ID> \
-  --member="serviceAccount:vertex-chatbot-sa@<YOUR_PROJECT_ID>.iam.gserviceaccount.com" \
-  --role="roles/storage.viewer"
-```
-Replace <YOUR_PROJECT_ID> with your actual GCP project ID.
+gcloud projects add-iam-policy-binding $PROJECT_ID \
+  --member="serviceAccount:$SA_NAME@$PROJECT_ID.iam.gserviceaccount.com" \
+  --role="roles/cloudfunctions.developer"
 
-🧠 Step 3: Prepare Your Python Cloud Function
-```python
-from flask import Request, jsonify
-import vertexai
-from vertexai.preview.generative_models import GenerativeModel
+gcloud projects add-iam-policy-binding $PROJECT_ID \
+  --member="serviceAccount:$SA_NAME@$PROJECT_ID.iam.gserviceaccount.com" \
+  --role="roles/iam.serviceAccountUser"
 
-def chatbot(request: Request):
-    try:
-        data = request.get_json()
-        prompt = data.get("prompt", "")
+gcloud projects add-iam-policy-binding $PROJECT_ID \
+  --member="serviceAccount:$SA_NAME@$PROJECT_ID.iam.gserviceaccount.com" \
+  --role="roles/storage.admin"
 
-        if not prompt:
-            return jsonify({"error": "Prompt is missing"}), 400
-
-        vertexai.init(project="<project_id>", location="<region>")
-
-        model = GenerativeModel("<model_id>")
-        response = model.generate_content(prompt)
-
-        return jsonify({"response": response.text})
-
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+gcloud projects add-iam-policy-binding gcp-learning-01-463711 \
+  --member="serviceAccount:$SA_NAME@$PROJECT_ID.iam.gserviceaccount.com" \
+  --role="roles/run.admin"
 ```
 
-```requirements.txt
-google-cloud-aiplatform==1.48.0
-flask
+### 🔑 Create and Download Service Account Key
+
+```bash
+gcloud iam service-accounts keys create sa-key.json \
+  --iam-account=$SA_NAME@$PROJECT_ID.iam.gserviceaccount.com
 ```
 
-☁️ Step 4: Deploy to Google Cloud
+Then base64 encode and store in GitHub secrets:
+```bash
+base64 sa-key.json > sa-key.b64
+```
+FOR Linux/Mac
+```bash
+base64 -i sa-key.json -o sa-key.txt
+```
+
+### ✨ Deploy Cloud Function
+
 ```bash
 gcloud functions deploy palmChatbot \
-  --runtime python311 \
-  --trigger-http \
-  --entry-point chatbot \
-  --region us-central1 \
-  --allow-unauthenticated \
-  --service-account vertex-chatbot-sa@<YOUR_PROJECT_ID>.iam.gserviceaccount.com
-```
-
-```
-gcloud functions deploy palmChatbot \
+  --region=us-central1 \
   --runtime=python310 \
   --trigger-http \
-  --allow-unauthenticated \
   --entry-point=chatbot \
-  --memory=512MB
-  --region us-central1
+  --memory=512MB \
+  --allow-unauthenticated \
+  --source=.
 ```
 
-🌐 Step 5: Frontend
-Use this index.html for local testing:
+### 🧲 Test with `curl`
 
-```html
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <title>Gemini Chatbot</title>
-  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      padding: 2rem;
-      max-width: 700px;
-      margin: auto;
-      background: #f8f9fa;
-    }
-    textarea {
-      width: 100%;
-      height: 100px;
-      padding: 10px;
-    }
-    button {
-      margin-top: 10px;
-      padding: 10px 20px;
-    }
-    #response {
-      margin-top: 30px;
-      background: #fff;
-      padding: 20px;
-      border-radius: 8px;
-    }
-  </style>
-</head>
-<body>
-  <h1>Ask Gemini</h1>
-  <textarea id="prompt" placeholder="Ask a question..."></textarea><br />
-  <button onclick="sendPrompt()">Ask</button>
-  <div id="response"></div>
-
-  <script>
-    async function sendPrompt() {
-      const prompt = document.getElementById('prompt').value;
-      const responseDiv = document.getElementById('response');
-      responseDiv.innerHTML = '⏳ Waiting for response...';
-
-      try {
-        const res = await fetch("https://<region>-<project_id>.cloudfunctions.net/<function_name>", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ prompt }),
-        });
-
-        const data = await res.json();
-        if (data.response) {
-          responseDiv.innerHTML = marked.parse(data.response);
-        } else {
-          responseDiv.innerHTML = "❌ Error: " + JSON.stringify(data);
-        }
-      } catch (err) {
-        responseDiv.innerHTML = "❌ Network error: " + err.message;
-      }
-    }
-  </script>
-</body>
-</html>
-```
-✅ Open index.html locally or host it via GitHub Pages, Firebase Hosting, or any static server.
-
-### Run Curl or Frontend index.html file to verify
-```
-curl -X POST https://<region>-<project_id>.cloudfunctions.net/<function_name> \
+```bash
+curl -X POST https://REGION-PROJECT_ID.cloudfunctions.net/palmChatbot \
   -H "Content-Type: application/json" \
-  -d '{"prompt": "What is DevOps in simple words?"}'
+  -d '{"prompt": "What is Kubernetes?"}'
 ```
 
-🧪 Example Prompt
-```json
-{
-  "prompt": "What is MLOps in simple words?"
-}
+---
+
+## 🌐 Part 2: Frontend with HTML (index.html)
+
+Use the provided `docs/index.html` to create a simple chatbot UI with:
+
+* Prompt input
+* Response display
+* Loading animation
+* Clear chat button
+
+### ▶️ Local Deployment
+
+Just open `docs/index.html` in your browser or deploy with GitHub Pages (set `docs/` as your Pages root).
+
+---
+
+## ⚙️ Part 3: GitHub Workflows
+
+### ✅ list-cloud-functions.yml
+
+Lists deployed functions on push to `main`.
+
+```yaml
+name: List Cloud Functions
+on:
+  push:
+    branches: ["main"]
+
+jobs:
+  list:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: google-github-actions/auth@v1
+        with:
+          credentials_json: "${{ secrets.GCP_SA_KEY }}"
+      - uses: google-github-actions/setup-gcloud@v1
+        with:
+          project_id: gcp-learning-01-463711
+      - run: gcloud functions list
 ```
 
-🙌 Credits
-    Google Cloud Vertex AI team
-    Gemini Model (gemini-1.5-flash-002)
-    marked.js open-source project
+### ✅ test-and-deploy.yml
+
+Formats code, deploys to Cloud Functions.
+
+```yaml
+name: Test and Deploy Cloud Function
+on:
+  push:
+    branches: ["main"]
+
+jobs:
+  test-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: |
+          python3 -m pip install -r requirements.txt
+          python3 -m pip install black
+
+      - name: Lint
+        run: black --check .
+
+      - uses: google-github-actions/auth@v1
+        with:
+          credentials_json: "${{ secrets.GCP_SA_KEY }}"
+
+      - uses: google-github-actions/setup-gcloud@v1
+        with:
+          project_id: gcp-learning-01-463711
+
+      - name: Deploy
+        run: |
+          gcloud functions deploy palmChatbot \
+            --region=us-central1 \
+            --runtime=python310 \
+            --trigger-http \
+            --entry-point=chatbot \
+            --memory=512MB \
+            --allow-unauthenticated \
+            --source=.
+```
+
+### 🧲 Testing Deployment
+
+Update `main.py`, push to `main`, and GitHub Action will:
+
+* Lint code
+* Deploy updated function
+
+---
+
+## 🧹 Part 4: Delete All Resources (Optional Cleanup)
+
+### 1. Delete Cloud Function
+
+```bash
+gcloud functions delete palmChatbot --region=us-central1 --quiet
+```
+
+### 2. Delete Service Account
+
+```bash
+gcloud iam service-accounts list
+# Replace with your actual SA email
+gcloud iam service-accounts delete vertex-sa@gcp-learning-01-463711.iam.gserviceaccount.com --quiet
+```
+
+### 3. Disable APIs
+
+```bash
+gcloud services disable aiplatform.googleapis.com
+
+gcloud services disable cloudfunctions.googleapis.com
+
+gcloud services disable cloudbuild.googleapis.com
+
+gcloud services disable iam.googleapis.com
+```
+
+### 4. Delete Buckets (Optional)
+
+```bash
+gcloud storage buckets list
+gcloud storage buckets delete gs://your-bucket-name
+```
+
+### 5. Remove GitHub Secrets (Optional)
+
+Go to `Repo → Settings → Secrets → Actions → Delete GCP_SA_KEY` if needed.
+
+---
+
+You're now ready to redeploy or share this project! ✨
 
 ## Reference Link
 - Goodle Model versions and lifecycle: https://cloud.google.com/vertex-ai/generative-ai/docs/learn/model-versions
