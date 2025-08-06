@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Gemini Chatbot *</title>
+  <title>Gemini Chatbot (Streaming)</title>
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
@@ -64,17 +64,34 @@
       input.value = '';
       document.getElementById('typing-indicator').style.display = 'block';
 
+      let botReply = '';
+      appendMessage('bot', ''); // Placeholder
+
       try {
-        const res = await fetch('https://us-central1-gcp-learning-01-463711.cloudfunctions.net/palmChatbot', {
+        const response = await fetch('https://us-central1-gcp-learning-01-463711.cloudfunctions.net/palmChatbot', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ prompt }),
         });
 
-        const data = await res.json();
-        appendMessage('bot', data.response || '❌ Error: No response from model');
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder('utf-8');
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          const chunk = decoder.decode(value, { stream: true });
+          botReply += chunk;
+
+          // Replace placeholder with real-time content
+          chatHistory[chatHistory.length - 1].text = botReply.replaceAll("\\n", "\n");
+          appendMessage('bot', chatHistory[chatHistory.length - 1].text);
+        }
+
       } catch (error) {
-        appendMessage('bot', '❌ Network error or server issue');
+        chatHistory[chatHistory.length - 1].text = "❌ Error: " + error.message;
+        appendMessage('bot', chatHistory[chatHistory.length - 1].text);
       } finally {
         document.getElementById('typing-indicator').style.display = 'none';
       }
